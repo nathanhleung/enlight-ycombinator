@@ -74,7 +74,7 @@ This is where the Y combinator comes in: it provides a way to recurse &mdash; to
 ## Eliminating Recursion
 The Y combinator bestows the power of self-referential recursion unto languages which don't support it. So to derive it in JavaScript, let's pretend a little &mdash; let's pretend that JavaScript doesn't support recursion.
 
-If everything goes well, by the end of this we'll have a tool that will allow this factorial function to self-reference again &mdash; but most importantly, without any self-reference in the function itself!
+I've put the recursive factorial function given in the initial examples in the block below. If everything goes well, by the end of this writeup we'll have a tool that will allow this factorial function to self-reference again &mdash; but most importantly, without any self-reference in the function itself!
 
 ```js
 function factorial(x) {
@@ -85,7 +85,7 @@ function factorial(x) {
 }
 ```
 
-Factoring out the call to `factorial` from the function body and making it a parameter seems to be the best way to eliminate recursion at this point, so let's do that.
+The best way to begin removing the recursion from `factorial` looks like factoring out the call to `factorial` from the function body and making it a parameter, so let's do that.
 
 ### Bringing Our Own
 
@@ -99,9 +99,9 @@ function byoFactorial(f, x) {
 }
 ```
 
-With this new factorial function, `byoFactorial`, we have to "bring our own" ("bring your own") working `factorial` function `f` to pass into the new, non-recursive function as a parameter, to replace our old self-referential call.
+With this new factorial function, `byoFactorial`, we have to "bring our own"  working `factorial` function `f` to pass into the new, non-recursive function as a parameter, to replace our old self-referential call.
 
-Of course, the problem now is that we don't have a working `factorial` function anymore. But that doesn't mean we can give up! We can start small &mdash; from zero.
+Of course, the problem now is that we don't have a working `factorial` function anymore. But that doesn't mean we have to give up! We can start small &mdash; from zero.
 
 Let's begin by creating a function `f`, that when passed to `byoFactorial`, will make it work, but only for `x = 0 (0! = 1)`.
 
@@ -109,7 +109,7 @@ Let's begin by creating a function `f`, that when passed to `byoFactorial`, will
 >
 > For instance, `2! = 2` is the number of ways you can select and order two items &mdash; the first item, then the second; or the second item, then the first. By that same token, `0!` is the number of ways you can select and order zero items &mdash; and you can do that in only `1` way.
 
-How can we create this function `f` for which `byoFactorial` will work for `x = 0 (0! = 1)`? Well, our `byoFactorial` function already has a base case &mdash; when `x` is `0`, it returns `1`. Moreover, when `x = 0`, no self-reference originally occured anyway &mdash; `f` is not called.
+How can we create this function `f` for which `byoFactorial` will work for `x = 0 (0! = 1)`? Well, closer inspection of our `byoFactorial` function shows that it already has a base case defined &mdash; when `x` is `0`, it returns `1`. Moreover, when `x = 0`, no self-reference occured anyway in the original `factorial` function &mdash; thus, `f` is not called.
 
 That means we can pass any arbitrary function as `f`. When `x = 0`, `byoFactorial` will still return `1` regardless.
 
@@ -130,12 +130,18 @@ function random(x) {
 // working - you'll get a long and ugly
 // decimal. With the `identity` or `one` functions,
 // problems with output are more likely to slip
-// through.
+// through. For the rest of this writeup, I'll
+// use `random`.
+
+byoFactorial(random, 0)
+// => 1 - it works!
+byoFactorial(random, 1)
+// => 0.07382473983422022
 ```
 
-Previously, I mentioned passing a function `f` to `byoFactorial`, but we can just as easily create replacement `factorial` functions from `byoFactorial` by `bind`ing `f`. Using this method, we'll create new functions which we can call with just one parameter &mdash; our desired factorial, `x`.
+So far, we've been passing a function `f` to `byoFactorial`, but we can just as easily create replacement `factorial` functions from `byoFactorial` by `bind`ing `f`. Using this method, we'll create new functions which we can call with just one parameter &mdash; our desired factorial, `x`.
 
-> In our case, `bind` takes two parameters: a `this` value and the first parameter, `f`. Since `byoFactorial` doesn't access `this` at all, we can just set it to `null`.
+> In our case, `bind` takes two parameters: a `this` value and then the actual first parameter for `byoFactorial`, `f`. Since the body of `byoFactorial` doesn't access `this` at all, we can just set it to `null`.
 
 ```js
 function byoFactorial(f, x) {
@@ -176,17 +182,17 @@ function byoFactorial(f, x) {
 }
 ```
 
-Let's make `byoFactorial` work for both `0!` and `1!`. In other words, how can we create a function `f` for which this is the case?
+Let's make `byoFactorial` work for both `0!` and `1!`. In other words, how can we create a function `f` that we can bind to `byoFactorial` that'll allow it to return correct outputs for `x = 0` and `x = 1`?
 
-First, let's walk through what happens when we pass `x = 1` into `byoFactorial`. For whatever `f` we come up with, `byoFactorial(f, 1)` will return `1 * f(0)`. So, we'll need a factorial function which returns the correct value for `x = 0`. Do we already have a factorial function which works for `0!`?
+First, let's walk through what happens when we pass `x = 1` into `byoFactorial`. For whatever `f` we come up with, `byoFactorial(f, 1)` will return `1 * f(0)`. So, all we need is a factorial function `f` which returns the correct value for the case when `x = 0`. Do we already have a factorial function which works for `0!`?
 
-We do, and it's called `factorialUpTo0`! Let's bind it to `byoFactorial`. This will create a factorial function which will work for both `x = 0` and `1` &mdash; or rather, all integer values from 0 up to 1. We'll call this one `factorialUpTo1`.
+We do, and it's called `factorialUpTo0`! Let's bind it to `byoFactorial`. This will create a factorial function which will work for both `x = 0` and `1` &mdash; or rather, all integer values from 0 up to 1 (this process will be easier to reason about if we think about it this way). We'll call this function `factorialUpTo1`.
 
 ```js
 const factorialUpTo1 = byoFactorial.bind(null, factorialUpTo0);
 ```
 
-Before we keep going, let's refactor our `byoFactorial` function. Calling `.bind` is clunky (especially with that `null`!) and we can clean up our syntax by returning a function (in essence, creating a "factory").
+Before we keep going, let's refactor our `byoFactorial` function. Calling `.bind` is clunky (especially with that `null`!) and we can clean up our syntax by returning a function instead (in essence, creating a "factory").
 
 ```js
 function factorialFactory(f) {
@@ -215,7 +221,7 @@ And we can make `factorialUpTo2`, too!
 const factorialUpTo2 = factorialFactory(factorialUpTo1);
 ```
 
-`factorialUpTo2` will work with 2, because it will return `2 * factorialUpTo1(1)`, and we already know that `factorialUpTo1` will work up to 1!
+`factorialUpTo2` will work with for `x = 2`, because it will return `2 * factorialUpTo1(1)`, and we already know that `factorialUpTo1` will work up to 1, so we also know that `factorialUpTo2` will return correct outputs for all values up to 1 as well!
 
 ```js
 const factorialUpTo3 = factorialFactory(factorialUpTo2);
@@ -247,7 +253,7 @@ factorialUpTo10(12)
 // => 79140708.41594502
 ```
 
-> Note that the very first function `f` we passed to `factorialFactory` to create `factorialUpTo0` (in my case, `Math.random`) is only called if we pass an `x` greater than the upper bound of our `factorialUpTo{x}` function. If we keep passing our new `factorialUpTo{x}` functions back into `factorialFactory`, ad infinitum, `Math.random` will never be called (because the upper bound will be at infinity), and our function will work over all values of `x`!
+> Note that the very first function `f` we passed to `factorialFactory` to create `factorialUpTo0` (in my case, `Math.random`) is only called if we pass an `x` greater than the upper bound of our `factorialUpTo{x}` function. If we keep passing our newly created `factorialUpTo{x}` functions back into `factorialFactory`, ad infinitum, `Math.random` will never be called (because the upper bound will be at infinity), and our function will work over all values of `x`!
 
 Here's what `factorialUpTo10` looks like, expanded.
 
@@ -266,14 +272,14 @@ const factorialUpTo10 =
                       factorialFactory(Math.random)))))))))));
 ```
 
-It looks like we'll need to apply `factorialFactory` to itself ad infinitum to get our working `factorial` function &mdash; but unfortunately, we can't infinitely apply `factorialFactory`.
+So, it looks like we'll need to apply `factorialFactory` to itself ad infinitum to get our working `factorial` function. How can we do that though?
 
 ```
 const factorialUpToInfinity = ???
 ```
 
-## Here Comes Y
-The Y combinator is here to save the day! What does `y` do? It essentially applies a function infinite times, and in simple terms can be defined like below.
+## Here Comes Y!
+The Y combinator is here to save the day! The Y combinator is a function which applies another function infinite times, and in simple terms can be defined like below.
 
 ```js
 function y(f) {
@@ -285,15 +291,17 @@ Unfortunately, JavaScript can't evaluate the above expression. We need to simpli
 
 ### A Math Problem
 
-What's the sum of `sqrt(2 + sqrt(2 + sqrt(2 + sqrt(2 + sqrt(2 ...)))))`.
+What's the sum of `sqrt(2 + sqrt(2 + sqrt(2 + sqrt(2 + sqrt(2 ...)))))`?
 
-This one was always a toughie, but the solution is simple. Let's call the sum `S`, so `S = sqrt(2 + sqrt(2 + sqrt(2 + sqrt(2 + sqrt(2 ...)))))`.
+The solution is simple. Let's call the sum `S`, so `S = sqrt(2 + sqrt(2 + sqrt(2 + sqrt(2 + sqrt(2 ...)))))`.
 
-Now, if we look closely at the expression, we can see `S` is a part of itself! The sum can alternatively be written as `S = sqrt(2 + S)`. Squaring both sides, we get `S^2 = S + 2`. Moving all terms of `S` to the left side, we get `S^2 - S - 2 = 0`. Factored, this is `(S - 2)(S + 1) = 0`, so the two solutions to this equation are `S = -1` and `S = 2`. Since `sqrt` returns the principal (non-negative) square root, our solution must be `S = 2`.
+Now, if we look closely at the expression, we can see `S` is a part of itself! The sum can alternatively be written as `S = sqrt(2 + S)`.
+
+Squaring both sides, we get `S^2 = S + 2`. Moving all terms of `S` to the left side, we get `S^2 - S - 2 = 0`. Factored, this is `(S - 2)(S + 1) = 0`, so the two solutions to this equation are `S = -1` and `S = 2`. Since `sqrt` returns the principal (non-negative) square root, our solution must be `S = 2`.
 
 We can apply this same principle to our original formulation of the Y-combinator: `y(f) = f(f(f(f(f(f(f(f(f(f(f(f(f(...)))))))))))))`. Looking closely, it's clear that `y(f)` is a part of the equation for `y(f)`! We can write the new equation for `y(f)` like so: `y(f) = f(y(f))`.
 
-We can wrap that expression in another function so we can explicitly pass our `x` parameter to the result.
+We can wrap that expression in another function so we can explicitly pass our `x` parameter, too.
 
 ```js
 function y(f) {
@@ -332,7 +340,7 @@ function y(f) {
 >
 > This continues until we get the stack overflow error.
 >
-> On the other hand, when we wrap the expression in an outer function, we defer evaluation of `y(f)`. The term for this type of outer function is a "thunk", which you may have heard from libraries like redux-thunk, which does the same thing but for Redux, a state management library.
+> On the other hand, when we wrap the expression in an outer function to pass the parameter `x`, we also defer evaluation of `y(f)`. The term for this type of outer function is a "thunk", which you may have heard from libraries like redux-thunk, which does the same thing but for Redux, a popular state management library often paired with React.
 >
 > ```js
 > function y(f) {
@@ -342,7 +350,7 @@ function y(f) {
 > }
 > ```
 > 
-> Let's walk through this evaluation.
+> Let's walk through the thunked evaluation.
 > 
 > ```js
 > function factorialFactory(f) {
@@ -366,7 +374,10 @@ function y(f) {
 >   return factorialFactory(y(factorialFactory))(x)
 > })(10)
 > 
-> // At this point, the first argument to factorialFactory has been fully evaluated (the thunk is the result of the evalation)! Now, the body of factorialFactory can actually be run.
+> // At this point, the first argument to factorialFactory
+> // has been fully evaluated (the thunk is the result of
+> // the evalation)! Now, the body of factorialFactory can
+> // actually be run.
 > 
 > 10 * (function thunk(x) {
 >   return factorialFactory(y(factorialFactory))(x);
@@ -377,7 +388,9 @@ function y(f) {
 > // And so on
 > ```
 
-> In Haskell, a functional language, the Y combinator can be defined as we did above initially:
+The evaluation semantics of JavaScript are really the only thing preventing us from defining the Y combinator as we had it originally (`y(f) = f(y(f))`). In other languages, it's completely acceptable!
+
+> In Haskell, a functional language, the Y combinator _can_ be defined as we did above initially:
 > `y(f) = f(y(f))`.
 > The reason this is possible is because Haskell's evaluation semantics are different &mdash; Haskell is a lazy language. By default, it doesn't fully evaluate expressions until they are truly needed.
 >
@@ -409,7 +422,7 @@ function y(f) {
 > ```
 
 ## But There's Still Recursion!
-Our current definition `y` of the Y combinator still contains recursion, though! One of the main draws of the Y combinator is that it allows us to add support for recursion to languages which don't support it &mdash; so there must be a way to get rid of the recursive call.
+Our current definition `y` of the Y combinator still contains recursion, though! One of the main selling points of the Y combinator is that it allows us to add support for recursion to languages which don't support it &mdash; so there must be a way to get rid of the recursive call.
 
 ```js
 function y(f) {
@@ -419,9 +432,9 @@ function y(f) {
 }
 ```
 
-We could take the same approach as we did before, factoring our the recursive call into a parameter and creating a "factory" function, but that won't fly &mdash; as we saw in the factorial example, we'll still need to apply that factory function ad infinitum to create a functional `y`.
+We could take the same approach as we did before, factoring out the recursive call into a parameter and creating a "factory" function, but that won't fly &mdash; as we saw in the `factorial` example, we'd still need to apply that factory function ad infinitum to create a functional `y`.
 
-Let's take a closer look at `y`, then. How can we define `y` in non-recursive terms? Well, we can take advantage of the fact that while we are avoiding self-reference in function bodies, functions can still pass themselves as parameters!
+Let's take a closer look at `y`, then. How can we define `y` in non-recursive terms? Well, we can take advantage of the fact that while we are voluntarily shunning self-reference in function bodies, we can still pass functions to themselves as parameters!
 
 We'll need to make a clever substitution, though. Instead of defining `y(f)` as we have it now, let's define it as `y(f) = x(x)(f)`, for some other function `x`. In simpler terms, `y = x(x)` &mdash; `y` is `x` applied to itself.
 
@@ -491,16 +504,16 @@ It works! By applying `x` to itself, we avoid self-reference in the function bod
 And with a little bit more refactoring and substitution, we've got the non-recursive Y combinator!
 
 ```js
-// What we have
+// What we already have
 function x(otherX) {
   return function y(f) {
     return function thunk(n) {
       // By passing `x` to itself (in the form of `otherX`),
       // we can technically "call" `x` inside the function
-      // body - but importantly, non-recursively! Of course,
+      // body of `x` - but importantly, non-recursively! Of course,
       // now that we've altered the parameters of `x` to take
-      // itself, we need to pass `otherX` to `otherX` in this
-      // call, too.
+      // itself, we need to pass `otherX` to `otherX` in the
+      // return statement, too.
       return f(otherX(otherX)(f))(n);
     }
   }
@@ -559,6 +572,12 @@ const y =
 
 And there you go! One of the most important concepts in theoretical computer science, sitting on your lap in just a few characters.
 
+```js
+const y =
+  ((x) => (f) => (...a) => f(x(x)(f))(...a))
+    ((x) => (f) => (...a) => f(x(x)(f))(...a));
+```
+
 ## Appendix
 Try writing your own `y`-compatible, non-recursive implementations of your favorite recursive processes! Here's an example with the Fibonacci sequence mentioned earlier.
 
@@ -576,3 +595,8 @@ const fibonacci = y(fibonacciFactory);
 fibonacci(10)
 // => 89
 ```
+
+## About the Author
+Thanks for reading! My name is [Nathan Leung](https://www.nathanhleung.com). I'm the founder of location-based social messaging app [Suap](https://www.getsuap.com/) and an incoming first-year student at the University of Michigan.
+
+You can learn more about me on my [LinkedIn](https://www.linkedin.com/in/nathanhleung/) or on my [personal website](https://www.nathanhleung.com), and I encourage you to try [Suap](https://www.getsuap.com/) at [getsuap.com](https://www.getsuap.com/)!
